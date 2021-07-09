@@ -1,0 +1,104 @@
+---
+title: "KV5692F_Stochastic"
+author: "KV5692F"
+date: "17/01/2021"
+output: pdf_document
+---
+
+## Brownian path simulation
+
+```{r}
+set.seed(100)
+T = 1
+N = 500
+dt = T/N
+
+dw = c() 
+w = c()  
+dw[1] = sqrt(dt)*rnorm(1,0,1)
+w[1] = dw[1]
+for (j in 2:N){
+  dw[j]= sqrt(dt)*rnorm(1,0,1)
+  w[j] = w[j-1] + dw[j]
+}
+t=seq(dt,1,dt)
+plot(t,w, type = "l",col=2,xlab = "t",ylab = "W(t)", main = "Brownian path simulation")
+```
+
+## Brownian path simulation: vectorized
+
+```{r}
+set.seed(100)
+T = 1
+N = 500
+dt = T/N
+dw= sqrt(dt)*rnorm(N, 0, 1)
+w=cumsum(dw)
+plot(seq(dt,T,dt),w, col='red',type="l",xlab = "t",ylab = "W(t)",main = "Brownian path simulation: vectorized" )
+```
+
+
+## Function along a Brownian path
+
+```{r}
+library(matlab)
+M = 1000
+T = 1
+N = 500
+dt = T/N
+t = seq(dt,T,dt)
+dw = sqrt(dt)*matrix(rnorm(M*N,mean = 0,sd=1),M,N)
+w= apply(dw,1,cumsum)
+U=exp(repmat(t,1, M)+ 0.5*w)
+Umean= apply(U,1,mean)
+#plot(t,Umean,type = "l")
+
+plot.new()
+#par(mar=c(4,4,3,5))
+plot(t,Umean,type = "l", col="blue",xlab = "t", ylab = "U(t)")
+for (i in 1:5){
+  par(new=T)
+  plot(t,U[,i], col=2,type = "l",axes = F,xlab =  " ",ylab = " ", lwd=0.7)
+}
+legend("topleft",legend = c("mean of 1000 paths","5 individual paths"),
+                            col=c("blue","red"), lty = 1:2,bg="lightblue")
+```
+
+## The Euler–Maruyama Method.
+```{r}
+set.seed(100)
+lambd = 2
+mu = 1
+Xzero = 1
+T = 1
+N = 2^8 
+dt = 1/N
+dW = sqrt(dt)*rnorm(N,0,1)
+W = cumsum(dW)
+Xtrue = Xzero*exp((lambd-0.5*mu**2)*(seq(dt,T,dt))+mu*W)
+R = 4
+Dt = R*dt
+L = (N/R)
+Xem = c(0)
+Xtemp = 1
+
+for (j in 1:L) { 
+  k=R*(j-1)+1
+  e=R*j
+  Winc = sum(dW[k:e])
+  Xtemp = Xtemp + Dt*lambd*Xtemp + mu*Xtemp*Winc
+  Xem[j] = Xtemp
+}
+
+plot.new()
+plot(seq(Dt,T,Dt),Xem, type = "o",col="blue",
+     main = "True solution and EM approximation, from em.m.",xlab = "t",ylab = "X")
+par(new=T)
+plot(seq(dt,T,dt),Xtrue, type = "l",col=2,axes = F,xlab =  " ",ylab = " ")
+
+```
+
+```{r}
+
+```
+

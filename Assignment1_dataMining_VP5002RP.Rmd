@@ -1,0 +1,1663 @@
+---
+title: "Assignment 1 de Data Mining"
+author: "VP5002RP"
+date: "24/04/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Description of the project
+Le jeu de données que nous utilisons est constitué de caractéristiques de chiffres manuscrits de '0' à '9' extraits d'une collection de cartes utilitaires néerlandaises. 200 motifs par classe (pour un total de 2 000 motifs) ont été numérisés en images binaires. Ces chiffres sont représentés en termes des six ensembles de caractéristiques suivants (fichiers) : 
+
+1. mfeat-fou: 76 Fourier coefficients of the character shapes; 
+2. mfeat-fac: 216 profile correlations; 
+3. mfeat-kar: 64 Karhunen-Love coefficients; 
+4. mfeat-pix: 240 pixel averages in 2 x 3 windows; 
+5. mfeat-zer: 47 Zernike moments; 
+6. mfeat-mor: 6 morphological features. 
+
+
+Dans chaque fichier, les 2000 motifs sont stockés en ASCI sur 2000 lignes. Les 200 premiers motifs sont de la classe '0', suivis par des ensembles de 200 motifs pour chacune des classes `1' - `9'. Les motifs correspondants dans les différents ensembles de caractéristiques (fichiers) correspondent au même caractère original.
+
+## data import
+
+In this part, we import the 06 data files:
+
+```{r pressure, echo=T}
+mfeat.fac <- read.table("C:/Users/STUDENT/Desktop/Cours/Data Mining/mfeat/mfeat-fac", quote="\"", comment.char="")
+mfeat.mor <- read.table("C:/Users/STUDENT/Desktop/Cours/Data Mining/mfeat/mfeat-mor", quote="\"", comment.char="")
+mfeat.fou <- read.table("C:/Users/STUDENT/Desktop/Cours/Data Mining/mfeat/mfeat-fou", quote="\"", comment.char="")
+mfeat.kar <- read.table("C:/Users/STUDENT/Desktop/Cours/Data Mining/mfeat/mfeat-kar", quote="\"", comment.char="")
+mfeat.pix <- read.table("C:/Users/STUDENT/Desktop/Cours/Data Mining/mfeat/mfeat-pix", quote="\"", comment.char="")
+mfeat.zer <- read.table("C:/Users/STUDENT/Desktop/Cours/Data Mining/mfeat/mfeat-zer", quote="\"", comment.char="")
+
+```
+
+# Donnée mfeat.fac
+
+Nous allons commencer avec les donnees mfeat.fac. Nous n'avons pas assez d'information sur les données
+
+```{r}
+#head(mfeat.fac, n=5)
+```
+```{r}
+
+# class(mfeat.fac)        # checking your data class
+
+# dim(mfeat.fac)          # getting the dimension of your data
+
+# names(mfeat.fac)        # getting the column names
+
+# str(mfeat.fac)          # checking data structure
+
+# anyNA(mfeat.fac)        # checking for missing values
+
+# summary(mfeat.fac)      # summary of the data
+
+# View(mfeat.fac)         # view your data
+```
+
+
+
+## Library for PCA
+```{r,echo=FALSE}
+library("FactoMineR")
+library("factoextra")
+```
+
+Pour la Description du jeu de données, ou identification de groupes d’individus et liens entre variables nous allons utiliser l’ACP pour décrire ce jeu de données comportant de nombreux individus et variables quantitatives. L’analyse doit permettre d’extraire l’information pertinente et la synthétiser sous forme de composantes principales, nouveaux axes pour décrire le jeu de données.
+
+
+## La fonction PCA()
+Nous utilisons la fonction ‘PCA()’ de ‘FactoMineR’, elle centre et réduit les variables avant de réaliser l’ACP. Cette étape est importante afin que toutes les variables aient le même poids dans la construction des plans de l’ACP. 
+
+```{r}
+res.pca <- PCA(mfeat.fac,ncp=10, graph = FALSE)
+print(res.pca)
+```
+
+
+## Valeurs propres
+
+Pour le choix du nombre de d'axe principale, nous pouvons utiliser la regle de kaiser et la regle de Coude.
+Nous allons donc afficher le nombre d'axe ou les valeurs propres sont superieur a 1
+
+Comme décrit, les valeurs propres  mesurent la quantité de variance expliquée par chaque axe principal. Les valeurs propres sont grandes pour les premiers axes et petits pour les axes suivants. Autrement dit, les premiers axes correspondent aux directions portant la quantité maximale de variation contenue dans le jeu de données.
+
+Nous examinons les valeurs propres pour déterminer le nombre de composantes principales à prendre en considération en fonction de la regle de kaiser et de coude
+
+
+Nous visualisons le tableau seulement pour les lignes dont les valeurs propres sont supperieur a 1
+```{r}
+dt=as.data.frame(res.pca$eig)
+dt[dt$eigenvalue >= 1, ]
+```
+
+
+La règle de Kaiser repose sur une idée simple. Dans une ACP normée, la somme des valeurs propres étant égale au nombre de variables, leur moyenne vaut 1. Nous considérons par conséquent qu’un axe est intéressant si sa valeur propre est supérieure 1
+Nous avons ici 23 valeurs propres superieur a 1, ce qui rend l'interpretation beaucoup plus compliquer.
+
+
+```{r}
+fviz_eig(res.pca, addlabels = TRUE)
+```
+
+En règle générale, le coude est très marqué lorsque nous traitons des variables fortement corrélées. Lorsqu’elles le sont faiblement ou lorsqu’il y a des blocs de variables corrélées, plutôt qu’une solution unique « évidente », nous devons faire face à plusieurs scénarios
+
+
+
+## Distribution de l’inertie
+L’inertie des axes factoriels indique d’une part si les variables sont structurées et suggère d’autre part le nombre judicieux de composantes principales à étudier.
+
+Les 2 premiers axes de l’ analyse expriment 37.62% de l’inertie totale du jeu de données ; cela signifie que 37.62% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan. C’est un pourcentage relativement moyen, et le premier plan représente donc seulement une part de la variabilité contenue dans l’ensemble du jeu de données actif.
+
+Du fait de ces observations, il serait alors probablement nécessaire de considérer également les dimensions supérieures ou égales à la troisième dans l’analyse.
+
+
+## Cercle de corrélation
+La corrélation entre une variable et une composante principale est utilisée comme coordonnées de la variable sur la composante principale. 
+
+
+```{r include=TRUE}
+
+fviz_pca_var(res.pca, select.var = list(cos2 = 0.5))
+```
+
+
+
+En prenant les variables dont les contibutions sont superieur  a 0.5 sur l'une des deux axes, on obtient le cercle de correlation ci-dessus.
+Si nous devons retenir toutes les 23 axes, et faire la meme representation, il nous sera tres difficile de l'interpreter.
+
+Pour ce faire nous allons faire une classifiaction avec la ''methode de ward'' et ''methode K-Mean'' sur les coordonnées des individus pour les rasembler en different classe.
+
+
+## Classification par la methode K-Mean
+
+### Deux principaux axes
+Dans cette partie nous utilisons les deux principaux axe pour la classification des individus, sachant que les 2 premiers axes de l’ analyse expriment 37.62% de l’inertie totale du jeu de données ; cela signifie que 37.62% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan
+
+### Determimination du nombre de Clusters optimaux
+```{r}
+## K-Mean
+
+res.pca <- PCA(mfeat.fac,ncp=2, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca$ind$coord
+df <- scale(ncp) # Scaling the data
+
+
+```
+
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df, kmeans,iter.max = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+Lorsque nous prenons les deux axes principaux, on se retrouve avec 6 clusters optimaux. Cependand on peut bien voir que en prenant 10 cluster on s'eloigne pas de la performance que apportent les 6 cluster
+
+
+```{r}
+km.res <- kmeans(df, 6,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.fac,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+
+Dans la figure précedente, nous avons representés nos individus en 6 classe, vu le nombre de classe optimal.
+
+```{r}
+km.res <- kmeans(df, 10,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.fac,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Nous resemblons nos individus sous 10 cluster, ceci est satisfessant dans car nous avons 10 classe de chiffre dans notre ensemble de données
+
+
+### 23 principaux axes
+
+Dans cette partie nous utilisons les 23 principaux axe pour la classification des individus, sachant que les 23 premiers axes de l’ analyse expriment 92,72% de l’inertie totale du jeu de données ; cela signifie que 92,72% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ces plans
+
+### Determimination du nombre
+
+```{r}
+## K-Mean
+
+res.pca23 <- PCA(mfeat.fac,ncp=23, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca23$ind$coord
+df23 <- scale(ncp) # Scaling the data
+
+
+```
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df23, kmeans,iter.max = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+
+En Prenant les 23 axes principaux, on obtient 10 clusters optimaux, ce qui corespond bien au nombre de classe initiale dans le jeux de données
+
+```{r}
+km.res <- kmeans(df23, 10,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.fac,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Cette representation est difficile a interpreter, car nous avons 23 axes principal. Meme si elle donne plus d'informations.
+
+## Classiffication avec l'ACP suivi de l'algorithme de Ward.
+Nous utilison Dans cette partie Une ACP suivi de la classification hiérachique sur le jeu de donnée res.PCA
+
+```{r}
+res.PCA= PCA(mfeat.fac,ncp=23, graph = FALSE,scale.unit = TRUE) # ACP en conservant 23 dimentions
+hc=HCPC(res.PCA,kk=100,description = F,graph = F) # Classification avec prétraitement par Kmean avec kk=100 classe
+plot(hc,choice='tree') # Graphe de l'abre
+plot(hc,choice='map',draw.tree=F) # Plan de l'ACP avec les abres
+plot(hc,choice='3D.map') # Plan de l'ACP avec les abres
+
+#catdes(hc$data.clust,ncol((hc$data.clust)))  ## caracterisation des classes
+
+```
+
+
+
+## Classiffication avec l'algorithme de Ward.
+
+Nous utilisons les 23 axes principales, car ayant tous des valeurs propres superieur a 1.
+```{r}
+res.pca <- PCA(mfeat.fac,ncp=23, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca$ind$coord
+```
+
+Dans cette partie nous utilisons les cordonnées des individu de l'ACP pour faire la classification avec l'algorithne de ward
+```{r}
+## standarisation des donnees
+new_data_scaled <- ncp              
+new_data_scaled.dist <- dist(new_data_scaled)     # Calcul de distance
+new_data_scaled.distT <- dist(t(new_data_scaled)) # calcul de distance
+```
+
+
+
+
+```{r}
+# effectuer un regroupement hiérarchique des observations (variables) en utilisant la méthode de Ward 
+ward = hclust(new_data_scaled.distT,method='ward.D2')
+wardT = hclust(new_data_scaled.dist,method='ward.D2')
+```
+
+
+
+```{r}
+plot(wardT, main = 'Wards Method',xlab =" ", sub ="")
+rect.hclust(wardT, k =10, border = 'red') ## selecting three clusters
+
+```
+Ce cluster nous permet de voir 10 classe.
+
+## Conclusion pour la donnée mfeat.fact
+
+Dans cette partie de notre etude nous avons pu momtrer que nos 2000 ligne pouvais etre regrouper en 10 classe a partir des methode de l'ACP en reduissant la dimension a un nombre acceptable pour ensuite faire de la Classification.
+
+
+
+
+
+# Donnée mfeat-fou
+
+
+
+
+
+Nous allons commencer avec les donnees mfeat.fou. Nous n'avons pas assez d'information sur les données
+
+```{r}
+#head(mfeat.fac, n=5)
+```
+```{r}
+
+# class(mfeat.fac)        # checking your data class
+
+# dim(mfeat.fac)          # getting the dimension of your data
+
+# names(mfeat.fac)        # getting the column names
+
+# str(mfeat.fac)          # checking data structure
+
+# anyNA(mfeat.fac)        # checking for missing values
+
+# summary(mfeat.fac)      # summary of the data
+
+# View(mfeat.fac)         # view your data
+```
+
+
+
+
+
+Pour la Description du jeu de données, ou identification de groupes d’individus et liens entre variables nous allons utiliser l’ACP pour décrire ce jeu de données comportant de nombreux individus et variables quantitatives. L’analyse doit permettre d’extraire l’information pertinente et la synthétiser sous forme de composantes principales, nouveaux axes pour décrire le jeu de données.
+
+
+## La fonction PCA()
+Nous utilisons la fonction ‘PCA()’ de ‘FactoMineR’, elle centre et réduit les variables avant de réaliser l’ACP. Cette étape est importante afin que toutes les variables aient le même poids dans la construction des plans de l’ACP. 
+
+```{r}
+res.pca02 <- PCA(mfeat.fou,ncp=10, graph = FALSE)
+print(res.pca02)
+```
+
+
+## Valeurs propres
+
+Pour le choix du nombre de d'axe principale, nous pouvons utiliser la regle de kaiser et la regle de Coude.
+Nous allons donc afficher le nombre d'axe ou les valeurs propres son superieur a 1
+
+Comme décrit dans les sections précédentes, les valeurs propres  mesurent la quantité de variance expliquée par chaque axe principal. Les valeurs propres sont grandes pour les premiers axes et petits pour les axes suivants. Autrement dit, les premiers axes correspondent aux directions portant la quantité maximale de variation contenue dans le jeu de données.
+
+Nous examinons les valeurs propres pour déterminer le nombre de composantes principales à prendre en considération en fonction de la regle de kaiser et de coude
+
+
+Nous visualisons le tableau seulement pour les lignes dont les valeurs propres sont supperieur a 1
+```{r}
+dt=as.data.frame(res.pca02$eig)
+dt[dt$eigenvalue >= 1, ]
+```
+
+
+La règle de Kaiser repose sur une idée simple. Dans une ACP normée, la somme des valeurs propres étant égale au nombre de variables, leur moyenne vaut 1. Nous considérons par conséquent qu’un axe est intéressant si sa valeur propre est supérieure 1
+Nous avons ici 20 valeurs propres superieur a 1, ce qui rend l'interpretation beaucoup plus compliquer.
+
+
+```{r}
+fviz_eig(res.pca02, addlabels = TRUE)
+```
+
+En règle générale, le coude est très marqué lorsque nous traitons des variables fortement corrélées. Lorsqu’elles le sont faiblement ou lorsqu’il y a des blocs de variables corrélées, plutôt qu’une solution unique « évidente », nous devons faire face à plusieurs scénarios
+
+Ici, on observe une cassure au niveau du deuxieme et du quatrième valeurs propre, mais il preferable de prendre 04 valeurs propres
+
+## Distribution de l’inertie
+L’inertie des axes factoriels indique d’une part si les variables sont structurées et suggère d’autre part le nombre judicieux de composantes principales à étudier.
+
+Les 2 premiers axes de l’ analyse expriment 22,44% de l’inertie totale du jeu de données ; cela signifie que 22,44% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan. C’est un pourcentage relativement faible, et le premier plan représente donc seulement une part de la variabilité contenue dans l’ensemble du jeu de données actif.
+
+Du fait de ces observations, il serait alors probablement nécessaire de considérer également les dimensions supérieures ou égales à la troisième dans l’analyse et aussi les 20 axes comme le suggère la loi de Kaiser
+
+
+## Cercle de corrélation
+La corrélation entre une variable et une composante principale (PC) est utilisée comme coordonnées de la variable sur la composante principale. 
+
+
+```{r include=TRUE}
+
+fviz_pca_var(res.pca02, select.var = list(cos2 = 0.4))
+```
+
+En prenant une contribution superieur a 0.5, on obtient aucune variable corrélé avec les axes principaux
+
+En prenant les variables dont les contibutions sont superieur  a 0.4 sur l'une des deux axes, on obtient le cercle de correlation ci-dessus.
+Si nous devons retenir toutes les 23 axes, et faire la meme representation, il nous sera tres difficile de l'interpreter.
+
+Pour ce faire nous allons faire une classifiaction avec la ''methode de ward'' et ''methode K-Mean'' sur les coordonnées des individus pour les rasembler en different classe.
+
+
+## Classification par la methode K-Mean
+
+### Deux principaux axes
+Dans cette partie nous utilisons les deux principaux axe pour la classification des individus, sachant que les 2 premiers axes de l’ analyse expriment 22.44% de l’inertie totale du jeu de données ; cela signifie que 22.44% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan
+
+### Determimination du nombre 
+```{r}
+## K-Mean
+
+res.pca02 <- PCA(mfeat.fou,ncp=2, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca02$ind$coord
+df <- scale(ncp) # Scaling the data
+
+
+```
+
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df, kmeans,iter.max = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+Lorsque nous prenons les deux axes principaux, on se retrouve avec 3 clusters optimal. Cependand nous pouvons envisager de regarder egalement 10 cluster.
+
+
+```{r}
+km.res <- kmeans(df, 3,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.fou,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+
+```{r}
+km.res <- kmeans(df, 10,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.fou,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Nous resemblons nos individus sous 10 cluster, ceci est satisfessant dans car nous avons 10 classe de chiffre dans notre ensemble de données
+
+
+### 20 principaux axes
+
+Dans cette partie nous utilisons les deux principaux axe pour la classification des individus, sachant que les 23 premiers axes de l’ analyse expriment 66.60% de l’inertie totale du jeu de données ; cela signifie que 66,60% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ces plans
+
+### Determimination du nombre
+
+```{r}
+## K-Mean
+
+res.pca20 <- PCA(mfeat.fou,ncp=20, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca23$ind$coord
+df20 <- scale(ncp) # Scaling the data
+
+
+```
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df20, kmeans,iter.max = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+
+En Prenant les 23 axes principaux, on obtient 10 clusters optimaux, ce qui corespond bien au nombre de classe initiale dans le jeux de données
+
+```{r}
+km.res <- kmeans(df20, 10,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.fou,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Cette representation est difficile a interpreter, car nous avons 20 axes principal . Meme si elle donne plus d'informations.
+
+## Classiffication avec l'ACP suivi de l'algorithme de Ward.
+Nous utilison Dans cette partie Une ACP suivi de la classification hiérachique sur le jeu de donnée res.PCA
+
+```{r}
+res.PCA= PCA(mfeat.fac,ncp=20, graph = FALSE,scale.unit = TRUE) # ACP en conservant 23 dimentions
+hc=HCPC(res.PCA,kk=100,description = F,graph = F) # Classification avec prétraitement par Kmean avec kk=100 classe
+plot(hc,choice='tree') # Graphe de l'abre
+plot(hc,choice='map',draw.tree=F) # Plan de l'ACP avec les abres
+plot(hc,choice='3D.map') # Plan de l'ACP avec les abres
+
+#catdes(hc$data.clust,ncol((hc$data.clust)))  ## caracterisation des classes
+
+```
+ Nous obtenons bien les trois classe precedentes, avec une bonne probabilité pour chaque variable de se trouver dans chacune des classe.
+
+
+## Classiffication avec l'algorithme de Ward.
+
+Nous utilisons les 20 axes principales, car ayant tous des valeurs propres superieur a 1.
+```{r}
+res.pca <- PCA(mfeat.fou,ncp=20, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca$ind$coord
+```
+
+Dans cette partie nous utilisons les cordonnées des individu de l'ACP pour faire la classification avec l'algorithne de ward
+```{r}
+## standarisation des donnees
+new_data_scaled <- ncp              
+new_data_scaled.dist <- dist(new_data_scaled)     # Calcul de distance
+new_data_scaled.distT <- dist(t(new_data_scaled)) # calcul de distance
+```
+
+
+
+
+```{r}
+# effectuer un regroupement hiérarchique des observations (variables) en utilisant la méthode de Ward 
+ward = hclust(new_data_scaled.distT,method='ward.D2')
+wardT = hclust(new_data_scaled.dist,method='ward.D2')
+```
+
+
+
+```{r}
+plot(wardT, main = 'Wards Method',xlab =" ", sub ="")
+rect.hclust(wardT, k =10, border = 'red') ## selecting three clusters
+
+```
+Ce cluster nous permet de voir 10 classe.
+
+## Conclusion pour la donnée mfeat.fou
+
+Dans cette partie de notre etude nous avons pu momtrer que nos 2000 ligne pouvais etre regrouper en 10 classe a partir des methode de l'ACP en reduissant la dimension a un nombre acceptable pour ensuite faire de la Classification.
+
+
+
+
+
+
+
+
+
+
+# Donnée mfeat.Kar
+
+Nous allons commencer avec les donnees mfeat.kar. Nous n'avons pas assez d'information sur les données
+
+```{r}
+#head(mfeat.fac, n=5)
+```
+```{r}
+
+# class(mfeat.kar)        # checking your data class
+
+# dim(mfeat.kar)          # getting the dimension of your data
+
+# names(mfeat.kar)        # getting the column names
+
+# str(mfeat.kar)          # checking data structure
+
+# anyNA(mfeat.kar)        # checking for missing values
+
+# summary(mfeat.kar)      # summary of the data
+
+# View(mfeat.kar)         # view your data
+```
+
+
+
+
+## La fonction PCA()
+Nous utilisons la fonction ‘PCA()’ de ‘FactoMineR’, elle centre et réduit les variables avant de réaliser l’ACP. Cette étape est importante afin que toutes les variables aient le même poids dans la construction des plans de l’ACP. 
+
+```{r}
+res.pca03 <- PCA(mfeat.kar,ncp=10, graph = FALSE)
+print(res.pca03)
+```
+
+
+## Valeurs propres
+
+Pour le choix du nombre de d'axe principale, nous pouvons utiliser la regle de kaiser et la regle de Coude.
+Nous allons donc afficher le nombre d'axe ou les valeurs propres sont superieur a 1
+
+Comme décrit, les valeurs propres  mesurent la quantité de variance expliquée par chaque axe principal. Les valeurs propres sont grandes pour les premiers axes et petits pour les axes suivants. Autrement dit, les premiers axes correspondent aux directions portant la quantité maximale de variation contenue dans le jeu de données.
+
+Nous examinons les valeurs propres pour déterminer le nombre de composantes principales à prendre en considération en fonction de la regle de kaiser et de coude
+
+
+Nous visualisons le tableau seulement pour les lignes dont les valeurs propres sont supperieur a 1
+```{r}
+dt=as.data.frame(res.pca03$eig)
+dt[dt$eigenvalue >= 1, ]
+```
+
+
+La règle de Kaiser repose sur une idée simple. Dans une ACP normée, la somme des valeurs propres étant égale au nombre de variables, leur moyenne vaut 1. Nous considérons par conséquent qu’un axe est intéressant si sa valeur propre est supérieure 1
+Nous avons ici 20 valeurs propres superieur a 1, ce qui rend l'interpretation beaucoup plus compliquer.
+
+
+```{r}
+fviz_eig(res.pca03, addlabels = TRUE)
+```
+
+En règle générale, le coude est très marqué lorsque nous traitons des variables fortement corrélées. Lorsqu’elles le sont faiblement ou lorsqu’il y a des blocs de variables corrélées, plutôt qu’une solution unique « évidente », nous devons faire face à plusieurs scénarios
+
+
+
+## Distribution de l’inertie
+
+L’inertie des axes factoriels indique d’une part si les variables sont structurées et suggère d’autre part le nombre judicieux de composantes principales à étudier.
+
+Les 2 premiers axes de l’ analyse expriment 17,15% de l’inertie totale du jeu de données ; cela signifie que 17,15% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan. C’est un pourcentage relativement faible, et le premier plan représente donc seulement une part de la variabilité contenue dans l’ensemble du jeu de données actif.
+
+Du fait de ces observations, il serait alors probablement nécessaire de considérer également les dimensions supérieures ou égales à la troisième dans l’analyse.
+
+
+## Cercle de corrélation
+La corrélation entre une variable et une composante principale est utilisée comme coordonnées de la variable sur la composante principale. 
+
+
+```{r include=TRUE}
+
+fviz_pca_var(res.pca03, select.var = list(cos2 = 0.5))
+```
+
+
+
+En prenant les variables dont les contibutions sont superieur  a 0.5 sur l'une des deux axes, on obtient le cercle de correlation ci-dessus.
+Si nous devons retenir toutes les 20 axes, et faire la meme representation, il nous sera tres difficile de l'interpreter.
+
+Pour ce faire nous allons faire une classifiaction avec la ''methode de ward'' et ''methode K-Mean'' sur les coordonnées des individus pour les rasembler en different classe.
+
+
+## Classification par la methode K-Mean
+
+### Deux principaux axes
+Dans cette partie nous utilisons les deux principaux axe pour la classification des individus, sachant que les 2 premiers axes de l’ analyse expriment 17.15% de l’inertie totale du jeu de données ; cela signifie que 17.15% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan
+
+### Determimination du nombre de Clusters optimaux
+```{r}
+## K-Mean
+
+res.pca03 <- PCA(mfeat.kar,ncp=2, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca03$ind$coord
+df <- scale(ncp) # Scaling the data
+
+
+```
+
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df, kmeans,iter.max = 1000,  nstart = 50,method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+Lorsque nous prenons les deux axes principaux, on se retrouve avec 5 clusters optimaux. 
+
+
+```{r}
+km.res <- kmeans(df, 5,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.kar,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+
+Dans la figure précedente, nous avons representés nos individus en 6 classe, vu le nombre de classe optimal.
+
+```{r}
+km.res <- kmeans(df, 10,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.kar,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Nous resemblons nos individus sous 10 cluster, ceci est satisfessant dans car nous avons 10 classe de chiffre dans notre ensemble de données
+
+
+### 23 principaux axes
+
+Dans cette partie nous utilisons les 23 principaux axe pour la classification des individus, sachant que les 20 premiers axes de l’ analyse expriment 66.08% de l’inertie totale du jeu de données ; cela signifie que 66.08% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ces plans
+
+### Determimination du nombre
+
+```{r}
+## K-Mean
+
+res.pc <- PCA(mfeat.kar,ncp=20, graph = FALSE,scale.unit = TRUE)
+ncp=res.pc$ind$coord
+d <- scale(ncp) # Scaling the data
+
+
+```
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(d, kmeans,iter.max = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+
+En Prenant les 20 axes principaux, on obtient 9 clusters optimaux, ce qui corespond bien au nombre de classe initiale dans le jeux de données
+
+```{r}
+km.res <- kmeans(d, 9,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.kar,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Cette representation est difficile a interpreter, car nous avons 20 axes principal. Meme si elle donne plus d'informations.
+
+## ACP suivit de la Classiffication avec l'algorithme de Ward.
+Nous utilison Dans cette partie Une ACP suivi de la classification hiérachique sur le jeu de donnée res.PCA
+
+```{r}
+res.PCA= PCA(mfeat.kar,ncp=20, graph = FALSE,scale.unit = TRUE) # ACP en conservant 23 dimentions
+hc=HCPC(res.PCA,kk=100,description = F,graph = F) # Classification avec prétraitement par Kmean avec kk=100 classe
+plot(hc,choice='tree') # Graphe de l'abre
+plot(hc,choice='map',draw.tree=F) # Plan de l'ACP avec les abres
+plot(hc,choice='3D.map') # Plan de l'ACP avec les abres
+
+#catdes(hc$data.clust,ncol((hc$data.clust)))  ## caracterisation des classes
+
+```
+
+
+
+## Classiffication avec l'algorithme de Ward.
+
+Nous utilisons les 20 axes principales, car ayant tous des valeurs propres superieur a 1.
+```{r}
+res.pca03 <- PCA(mfeat.kar,ncp=20, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca03$ind$coord
+```
+
+Dans cette partie nous utilisons les cordonnées des individu de l'ACP pour faire la classification avec l'algorithne de ward
+```{r}
+## standarisation des donnees
+new_data_scaled <- ncp              
+new_data_scaled.dist <- dist(new_data_scaled)     # Calcul de distance
+new_data_scaled.distT <- dist(t(new_data_scaled)) # calcul de distance
+```
+
+
+
+
+```{r}
+# effectuer un regroupement hiérarchique des observations (variables) en utilisant la méthode de Ward 
+ward = hclust(new_data_scaled.distT,method='ward.D2')
+wardT = hclust(new_data_scaled.dist,method='ward.D2')
+```
+
+
+
+```{r}
+plot(wardT, main = 'Wards Method',xlab =" ", sub ="")
+rect.hclust(wardT, k =10, border = 'red') ## selecting three clusters
+
+```
+Ce cluster nous permet de voir 10 classe.
+
+## Conclusion pour la donnée mfeat.kar
+
+Dans cette partie de notre étude nous avons pu momtrer que nos 2000 lignes pouvais être regrouper en 10 classe a partir des methode de l'ACP en reduissant la dimension a un nombre acceptable pour ensuite faire de la Classification.
+La methode de ACP suivit de Kmean donne donne 5 clusters pour deux axes principaux et 9 cluster pour 20 axe principaux
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Donnée mfeat.fac
+
+Nous allons commencer avec les donnees mfeat.mor. Nous n'avons pas assez d'information sur les données
+
+
+Pour la Description du jeu de données, ou identification de groupes d’individus et liens entre variables nous allons utiliser l’ACP pour décrire ce jeu de données comportant de nombreux individus et variables quantitatives. L’analyse doit permettre d’extraire l’information pertinente et la synthétiser sous forme de composantes principales, nouveaux axes pour décrire le jeu de données.
+
+
+## La fonction PCA()
+Nous utilisons la fonction ‘PCA()’ de ‘FactoMineR’, elle centre et réduit les variables avant de réaliser l’ACP. Cette étape est importante afin que toutes les variables aient le même poids dans la construction des plans de l’ACP. 
+
+```{r}
+res.pca04 <- PCA(mfeat.mor,ncp=10, graph = FALSE)
+print(res.pca04)
+```
+
+
+## Valeurs propres
+
+Pour le choix du nombre de d'axe principale, nous pouvons utiliser la regle de kaiser et la regle de Coude.
+Nous allons donc afficher le nombre d'axe ou les valeurs propres sont superieur a 1
+
+Comme décrit, les valeurs propres  mesurent la quantité de variance expliquée par chaque axe principal. Les valeurs propres sont grandes pour les premiers axes et petits pour les axes suivants. Autrement dit, les premiers axes correspondent aux directions portant la quantité maximale de variation contenue dans le jeu de données.
+
+Nous examinons les valeurs propres pour déterminer le nombre de composantes principales à prendre en considération en fonction de la regle de kaiser et de coude
+
+
+Nous visualisons le tableau seulement pour les lignes dont les valeurs propres sont supperieur a 1
+```{r}
+dt=as.data.frame(res.pca04$eig)
+dt[dt$eigenvalue >= 1, ]
+```
+
+
+La règle de Kaiser repose sur une idée simple. Dans une ACP normée, la somme des valeurs propres étant égale au nombre de variables, leur moyenne vaut 1. Nous considérons par conséquent qu’un axe est intéressant si sa valeur propre est supérieure 1
+Nous avons ici 2 valeurs propres superieur a 1, ce qui rend l'interpretation beaucoup plus simple.
+
+
+```{r}
+fviz_eig(res.pca04, addlabels = TRUE)
+```
+La regle de coude nous permet de choisir deux axes principaux
+
+
+## Distribution de l’inertie
+
+L’inertie des axes factoriels indique d’une part si les variables sont structurées et suggère d’autre part le nombre judicieux de composantes principales à étudier.
+
+Les 2 premiers axes de l’ analyse expriment 87.65% de l’inertie totale du jeu de données ; cela signifie que 87.65% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan. C’est un pourcentage relativement bon, et le premier plan représente donc seulement une part important de la variabilité contenue dans l’ensemble du jeu de données actif.
+
+
+
+## Cercle de corrélation
+La corrélation entre une variable et une composante principale est utilisée comme coordonnées de la variable sur la composante principale. 
+
+
+```{r include=TRUE}
+
+fviz_pca_var(res.pca04, select.var = list(cos2 = 0.5))
+```
+
+
+
+En prenant les variables dont les contibutions sont superieur  a 0.5 sur l'une des deux axes, on obtient le cercle de correlation ci-dessus.
+
+
+Pour ce faire nous allons faire une classifiaction avec la ''methode de ward'' et ''methode K-Mean'' sur les coordonnées des individus pour les rasembler en different classe.
+
+
+## Classification par la methode K-Mean
+
+### Deux principaux axes
+Dans cette partie nous utilisons les deux principaux axe pour la classification des individus, sachant que les 2 premiers axes de l’ analyse expriment 87.65% de l’inertie totale du jeu de données ; cela signifie que 87.65% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan
+
+### Determimination du nombre de Clusters optimaux
+```{r}
+## K-Mean
+
+res.pca04 <- PCA(mfeat.mor,ncp=2, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca04$ind$coord
+df04 <- scale(ncp) # Scaling the data
+
+
+```
+
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df04, kmeans,iter.max = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+Lorsque nous prenons les deux axes principaux, on se retrouve avec 7 clusters optimaux.
+
+
+```{r}
+km.res <- kmeans(df04, 7,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.mor,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+
+Dans la figure précedente, nous avons representés nos individus en 7 classe, vu le nombre de classe optimal. Nous avons de bonne presentation pour certaine classe, une bonne separation
+
+
+## Classiffication avec l'ACP suivi de l'algorithme de Ward.
+
+Nous utilison Dans cette partie Une ACP suivi de la classification hiérachique sur le jeu de donnée res.PCA
+
+```{r}
+res.PCA= PCA(mfeat.mor,ncp=2, graph = FALSE,scale.unit = TRUE) # ACP en conservant 2 dimentions
+hc=HCPC(res.PCA,kk=100,description = F,graph = F) # Classification avec prétraitement par Kmean avec kk=100 classe
+plot(hc,choice='tree') # Graphe de l'abre
+plot(hc,choice='map',draw.tree=F) # Plan de l'ACP avec les abres
+
+#catdes(hc$data.clust,ncol((hc$data.clust)))  ## caracterisation des classes
+
+```
+
+
+
+## Classiffication avec l'algorithme de Ward.
+
+Nous utilisons les 2 axes principales, car ayant tous des valeurs propres superieur a 1.
+```{r}
+res.pca04 <- PCA(mfeat.mor,ncp=2, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca04$ind$coord
+```
+
+Dans cette partie nous utilisons les cordonnées des individu de l'ACP pour faire la classification avec l'algorithne de ward
+```{r}
+## standarisation des donnees
+new_data_scaled <- ncp              
+new_data_scaled.dist <- dist(new_data_scaled)     # Calcul de distance
+new_data_scaled.distT <- dist(t(new_data_scaled)) # calcul de distance
+```
+
+
+
+
+```{r}
+# effectuer un regroupement hiérarchique des observations (variables) en utilisant la méthode de Ward 
+ward = hclust(new_data_scaled.distT,method='ward.D2')
+wardT = hclust(new_data_scaled.dist,method='ward.D2')
+```
+
+
+
+```{r}
+plot(wardT, main = 'Wards Method',xlab =" ", sub ="")
+rect.hclust(wardT, k =10, border = 'red') ## selecting three clusters
+
+```
+Ce cluster nous permet de voir 10 classe.
+
+## Conclusion pour la donnée mfeat.mor
+
+Dans cette partie de notre etude nous avons pu momtrer que nos 2000 ligne pouvais etre regrouper en 10 classe a partir des methode de l'ACP en reduissant la dimension a un nombre acceptable pour ensuite faire de la Classification.
+
+Le KMean a montré 7 cluster
+
+
+
+
+
+
+
+
+
+# Donnée mfeat.fac
+
+Nous allons commencer avec les donnees mfeat.fac. Nous n'avons pas assez d'information sur les données
+
+Pour la Description du jeu de données, ou identification de groupes d’individus et liens entre variables nous allons utiliser l’ACP pour décrire ce jeu de données comportant de nombreux individus et variables quantitatives. L’analyse doit permettre d’extraire l’information pertinente et la synthétiser sous forme de composantes principales, nouveaux axes pour décrire le jeu de données.
+
+
+## La fonction PCA()
+Nous utilisons la fonction ‘PCA()’ de ‘FactoMineR’, elle centre et réduit les variables avant de réaliser l’ACP. Cette étape est importante afin que toutes les variables aient le même poids dans la construction des plans de l’ACP. 
+
+```{r}
+res.pca05 <- PCA(mfeat.zer,ncp=10, graph = FALSE)
+print(res.pca05)
+```
+
+
+## Valeurs propres
+
+Pour le choix du nombre de d'axe principale, nous pouvons utiliser la regle de kaiser et la regle de Coude.
+Nous allons donc afficher le nombre d'axe ou les valeurs propres sont superieur a 1
+
+Comme décrit, les valeurs propres  mesurent la quantité de variance expliquée par chaque axe principal. Les valeurs propres sont grandes pour les premiers axes et petits pour les axes suivants. Autrement dit, les premiers axes correspondent aux directions portant la quantité maximale de variation contenue dans le jeu de données.
+
+Nous examinons les valeurs propres pour déterminer le nombre de composantes principales à prendre en considération en fonction de la regle de kaiser et de coude
+
+
+Nous visualisons le tableau seulement pour les lignes dont les valeurs propres sont supperieur a 1
+```{r}
+dt=as.data.frame(res.pca05$eig)
+dt[dt$eigenvalue >= 1, ]
+```
+
+
+La règle de Kaiser repose sur une idée simple. Dans une ACP normée, la somme des valeurs propres étant égale au nombre de variables, leur moyenne vaut 1. Nous considérons par conséquent qu’un axe est intéressant si sa valeur propre est supérieure 1
+Nous avons ici 11 valeurs propres superieur a 1, ce qui rend l'interpretation beaucoup plus compliquer.
+
+
+```{r}
+fviz_eig(res.pca05, addlabels = TRUE)
+```
+
+La regele de coude devais nous permettre de choisir 03 axes principaux
+
+
+## Distribution de l’inertie
+L’inertie des axes factoriels indique d’une part si les variables sont structurées et suggère d’autre part le nombre judicieux de composantes principales à étudier.
+
+Les 2 premiers axes de l’ analyse expriment 44.62% de l’inertie totale du jeu de données ; cela signifie que 44.62% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan. C’est un pourcentage relativement moyen, et le premier plan représente donc seulement une part de la variabilité contenue dans l’ensemble du jeu de données actif.
+
+Du fait de ces observations, il serait alors probablement nécessaire de considérer également les dimensions supérieures ou égales à la troisième dans l’analyse.
+
+
+## Cercle de corrélation
+La corrélation entre une variable et une composante principale est utilisée comme coordonnées de la variable sur la composante principale. 
+
+
+```{r include=TRUE}
+
+fviz_pca_var(res.pca05, select.var = list(cos2 = 0.5))
+```
+
+
+
+En prenant les variables dont les contibutions sont superieur  a 0.5 sur l'une des deux axes, on obtient le cercle de correlation ci-dessus. 
+Tous les variables dont la contribution est superieur a 0.5 est corrélé au premier axe.
+
+
+Nous allons faire une classifiaction avec la ''methode de ward'' et ''methode K-Mean'' sur les coordonnées des individus pour les rasembler en different classe.
+
+
+## Classification par la methode K-Mean
+
+### Deux principaux axes
+Dans cette partie nous utilisons les deux principaux axe pour la classification des individus, sachant que les 2 premiers axes de l’ analyse expriment 44.62% de l’inertie totale du jeu de données ; cela signifie que 44.62% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan
+
+### Determimination du nombre de Clusters optimaux
+```{r}
+## K-Mean
+
+res.pca05 <- PCA(mfeat.zer,ncp=2, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca05$ind$coord
+df05 <- scale(ncp) # Scaling the data
+
+
+```
+
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df05, kmeans,iter.max = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+Lorsque nous prenons les deux axes principaux, on se retrouve avec 6 clusters optimaux. Cependand on peut bien voir que en prenant 10 cluster on s'eloigne pas de la performance que apportent les 6 cluster
+
+
+```{r}
+km.res <- kmeans(df05, 6,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.zer,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+
+Dans la figure précedente, nous avons representés nos individus en 6 classe, vu le nombre de classe optimal.
+
+
+
+### 23 principaux axes
+
+Dans cette partie nous utilisons les 11 principaux axe pour la classification des individus, sachant que les 11 premiers axes de l’ analyse expriment 88.62% de l’inertie totale du jeu de données ; cela signifie que 88.62% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ces plans
+
+### Determimination du nombre
+
+```{r}
+## K-Mean
+
+res.pca11 <- PCA(mfeat.zer,ncp=11, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca11$ind$coord
+df11 <- scale(ncp) # Scaling the data
+
+
+```
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df11, kmeans,nstart = 500,iter.max = 500, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+
+En Prenant les 11 axes principaux, on obtient 9 clusters optimaux, ce qui corespond bien au nombre de classe initiale dans le jeux de données
+
+```{r}
+km.res <- kmeans(df23, 9,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.fac,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Cette representation est difficile a interpreter, car nous avons 11 axes principal. Meme si elle donne plus d'informations.
+
+## Classiffication avec l'ACP suivi de l'algorithme de Ward.
+Nous utilison Dans cette partie Une ACP suivi de la classification hiérachique sur le jeu de donnée res.PCA
+
+```{r}
+res.PCA= PCA(mfeat.zer ,ncp=11, graph = FALSE,scale.unit = TRUE) # ACP en conservant 21 dimentions
+hc=HCPC(res.PCA,kk=200,description = F,graph = F) # Classification avec prétraitement par Kmean avec kk=100 classe
+plot(hc,choice='tree') # Graphe de l'abre
+plot(hc,choice='map',draw.tree=F) # Plan de l'ACP avec les abres
+plot(hc,choice='3D.map') # Plan de l'ACP avec les abres
+
+#catdes(hc$data.clust,ncol((hc$data.clust)))  ## caracterisation des classes
+
+```
+
+
+
+## Classiffication avec l'algorithme de Ward.
+
+Nous utilisons les 23 axes principales, car ayant tous des valeurs propres superieur a 1.
+```{r}
+res.pca05 <- PCA(mfeat.zer,ncp=11, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca05$ind$coord
+```
+
+Dans cette partie nous utilisons les cordonnées des individu de l'ACP pour faire la classification avec l'algorithne de ward
+```{r}
+## standarisation des donnees
+new_data_scaled <- ncp              
+new_data_scaled.dist <- dist(new_data_scaled)     # Calcul de distance
+new_data_scaled.distT <- dist(t(new_data_scaled)) # calcul de distance
+```
+
+
+
+
+```{r}
+# effectuer un regroupement hiérarchique des observations (variables) en utilisant la méthode de Ward 
+ward = hclust(new_data_scaled.distT,method='ward.D2')
+wardT = hclust(new_data_scaled.dist,method='ward.D2')
+```
+
+
+
+```{r}
+plot(wardT, main = 'Wards Method',xlab =" ", sub ="")
+rect.hclust(wardT, k =10, border = 'red') ## selecting three clusters
+
+```
+Ce cluster nous permet de voir 10 classe.
+
+## Conclusion pour la donnée mfeat.zer
+
+Dans cette partie de notre etude nous avons pu momtrer que nos 2000 ligne pouvais etre regrouper en 10 classe a partir des methode de l'ACP en reduissant la dimension a un nombre acceptable pour ensuite faire de la Classification.
+La methode de KMean donne 6 clusteurs avec deux axes principaux et 9 classes avec les 11 axes principaux
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Donnée mfeat.pix
+
+Nous allons commencer avec les donnees mfeat.pix Nous n'avons pas assez d'information sur les données
+
+```{r}
+#head(mfeat.fac, n=5)
+```
+```{r}
+
+# class(mfeat.pix)        # checking your data class
+
+# dim(mfeat.pix)          # getting the dimension of your data
+
+# names(mfeat.pix)        # getting the column names
+
+# str(mfeat.pix)          # checking data structure
+
+# anyNA(mfeat.pix)        # checking for missing values
+
+# summary(mfeat.pix)      # summary of the data
+
+# View(mfeat.pix)         # view your data
+```
+
+
+
+
+
+Pour la Description du jeu de données, ou identification de groupes d’individus et liens entre variables nous allons utiliser l’ACP pour décrire ce jeu de données comportant de nombreux individus et variables quantitatives. L’analyse doit permettre d’extraire l’information pertinente et la synthétiser sous forme de composantes principales, nouveaux axes pour décrire le jeu de données.
+
+
+## La fonction PCA()
+Nous utilisons la fonction ‘PCA()’ de ‘FactoMineR’, elle centre et réduit les variables avant de réaliser l’ACP. Cette étape est importante afin que toutes les variables aient le même poids dans la construction des plans de l’ACP. 
+
+```{r}
+res.pca <- PCA(mfeat.pix,ncp=10, graph = FALSE)
+print(res.pca)
+```
+
+
+## Valeurs propres
+
+Pour le choix du nombre de d'axe principale, nous pouvons utiliser la regle de kaiser et la regle de Coude.
+Nous allons donc afficher le nombre d'axe ou les valeurs propres sont superieur a 1
+
+Comme décrit, les valeurs propres  mesurent la quantité de variance expliquée par chaque axe principal. Les valeurs propres sont grandes pour les premiers axes et petits pour les axes suivants. Autrement dit, les premiers axes correspondent aux directions portant la quantité maximale de variation contenue dans le jeu de données.
+
+Nous examinons les valeurs propres pour déterminer le nombre de composantes principales à prendre en considération en fonction de la regle de kaiser et de coude
+
+
+Nous visualisons le tableau seulement pour les lignes dont les valeurs propres sont supperieur a 1
+```{r}
+dt=as.data.frame(res.pca$eig)
+dt[dt$eigenvalue >= 1, ]
+```
+
+
+La règle de Kaiser repose sur une idée simple. Dans une ACP normée, la somme des valeurs propres étant égale au nombre de variables, leur moyenne vaut 1. Nous considérons par conséquent qu’un axe est intéressant si sa valeur propre est supérieure 1
+Nous avons ici 33 valeurs propres superieur a 1, ce qui rend l'interpretation beaucoup plus compliquer.
+
+
+```{r}
+fviz_eig(res.pca, addlabels = TRUE)
+```
+
+En règle générale, le coude est très marqué lorsque nous traitons des variables fortement corrélées. Lorsqu’elles le sont faiblement ou lorsqu’il y a des blocs de variables corrélées, plutôt qu’une solution unique « évidente », nous devons faire face à plusieurs scénarios
+
+
+
+## Distribution de l’inertie
+L’inertie des axes factoriels indique d’une part si les variables sont structurées et suggère d’autre part le nombre judicieux de composantes principales à étudier.
+
+Les 2 premiers axes de l’ analyse expriment 25.89% de l’inertie totale du jeu de données ; cela signifie que 25.89% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan. C’est un pourcentage relativement moyen, et le premier plan représente donc seulement une part de la variabilité contenue dans l’ensemble du jeu de données actif.
+
+Du fait de ces observations, il serait alors probablement nécessaire de considérer également les dimensions supérieures ou égales à la troisième dans l’analyse.
+
+
+## Cercle de corrélation
+La corrélation entre une variable et une composante principale est utilisée comme coordonnées de la variable sur la composante principale. 
+
+
+```{r include=TRUE}
+
+fviz_pca_var(res.pca)
+```
+
+
+
+En prenant les variables dont les contibutions sont superieur  a 0.5 sur l'une des deux axes, on obtient le cercle de correlation ci-dessus.
+Si nous devons retenir toutes les 33 axes, et faire la meme representation, il nous sera tres difficile de l'interpreter.
+
+Pour ce faire nous allons faire une classifiaction avec la ''methode de ward'' et ''methode K-Mean'' sur les coordonnées des individus pour les rasembler en different classe.
+
+
+## Classification par la methode K-Mean
+
+### Deux principaux axes
+Dans cette partie nous utilisons les deux principaux axe pour la classification des individus, sachant que les 2 premiers axes de l’ analyse expriment 25.89% de l’inertie totale du jeu de données ; cela signifie que 25.89% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan
+
+### Determimination du nombre de Clusters optimaux
+```{r}
+## K-Mean
+
+res.pca <- PCA(mfeat.pix,ncp=2, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca$ind$coord
+df <- scale(ncp) # Scaling the data
+
+
+```
+
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df, kmeans,iter.max = 50,nstart = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+Lorsque nous prenons les deux axes principaux, on se retrouve avec 3 clusters optimaux.
+
+```{r}
+km.res <- kmeans(df, 3,iter.max = 1000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.pix,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+
+Dans la figure précedente, nous avons representés nos individus en 3 classe, vu le nombre de classe optimal.
+
+```{r}
+km.res <- kmeans(df, 10,iter.max = 1000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.pix,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Nous resemblons nos individus sous 10 cluster, ceci est satisfessant dans car nous avons 10 classe de chiffre dans notre ensemble de données
+
+
+### 23 principaux axes
+
+Dans cette partie nous utilisons les 33 principaux axe pour la classification des individus, sachant que les 33 premiers axes de l’ analyse expriment 85.08 de l’inertie totale du jeu de données ; cela signifie que 85.08% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ces plans
+
+### Determimination du nombre
+
+```{r}
+## K-Mean
+
+res.pca <- PCA(mfeat.pix,ncp=23, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca$ind$coord
+df <- scale(ncp) # Scaling the data
+
+
+```
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df, kmeans,iter.max = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+
+En Prenant les 23 axes principaux, on obtient 9 clusters optimaux, ce qui corespond bien au nombre de classe initiale dans le jeux de données
+
+```{r}
+km.res <- kmeans(df23, 9,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = mfeat.fac,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Cette representation est difficile a interpreter, car nous avons 33 axes principal. Meme si elle donne plus d'informations.
+
+## Classiffication avec l'ACP suivi de l'algorithme de Ward.
+Nous utilison Dans cette partie Une ACP suivi de la classification hiérachique sur le jeu de donnée res.PCA
+
+```{r}
+res.PCA= PCA(mfeat.pix,ncp=33, graph = FALSE,scale.unit = TRUE) # ACP en conservant 33 dimentions
+hc=HCPC(res.PCA,kk=100,description = F,graph = F) # Classification avec prétraitement par Kmean avec kk=100 classe
+plot(hc,choice='tree') # Graphe de l'abre
+plot(hc,choice='map',draw.tree=F) # Plan de l'ACP avec les abres
+plot(hc,choice='3D.map') # Plan de l'ACP avec les abres
+
+#catdes(hc$data.clust,ncol((hc$data.clust)))  ## caracterisation des classes
+
+```
+
+
+
+## Classiffication avec l'algorithme de Ward.
+
+Nous utilisons les 33 axes principales, car ayant tous des valeurs propres superieur a 1.
+```{r}
+res.pca <- PCA(mfeat.fac,ncp=33, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca$ind$coord
+```
+
+Dans cette partie nous utilisons les cordonnées des individu de l'ACP pour faire la classification avec l'algorithne de ward
+```{r}
+## standarisation des donnees
+new_data_scaled <- ncp              
+new_data_scaled.dist <- dist(new_data_scaled)     # Calcul de distance
+new_data_scaled.distT <- dist(t(new_data_scaled)) # calcul de distance
+```
+
+
+
+
+```{r}
+# effectuer un regroupement hiérarchique des observations (variables) en utilisant la méthode de Ward 
+ward = hclust(new_data_scaled.distT,method='ward.D2')
+wardT = hclust(new_data_scaled.dist,method='ward.D2')
+```
+
+
+
+```{r}
+plot(wardT, main = 'Wards Method',xlab =" ", sub ="")
+rect.hclust(wardT, k =10, border = 'red') ## selecting three clusters
+
+```
+Ce cluster nous permet de voir 10 classe.
+
+## Conclusion pour la donnée mfeat.fact
+
+Dans cette partie de notre etude nous avons pu momtrer que nos 2000 ligne pouvais etre regrouper en 10 classe a partir des methode de l'ACP en reduissant la dimension a un nombre acceptable pour ensuite faire de la Classification.
+
+Les KMean permet de d'avoir 3 clusters avec deux axes principaux et 9 clusters avec 33
+
+
+
+
+
+
+
+
+
+
+
+
+
+# DOnnee Entière (Donnee Concatené)
+
+## concatenir l'ensembles de donnée pour en faire un data Set
+```{r}
+data= cbind(mfeat.fou,mfeat.kar)
+data= cbind(data,mfeat.pix)
+data= cbind(data,mfeat.zer)
+data= cbind(data,mfeat.fac )
+data= cbind(data,mfeat.zer)
+
+data=data[,c(1:649)] 
+```
+
+
+```{r}
+res.pca <- PCA(data,ncp=79, graph = FALSE)
+print(res.pca)
+```
+
+
+## Valeurs propres
+
+Pour le choix du nombre de d'axe principale, nous pouvons utiliser la regle de kaiser et la regle de Coude.
+Nous allons donc afficher le nombre d'axe ou les valeurs propres sont superieur a 1
+
+Comme décrit, les valeurs propres  mesurent la quantité de variance expliquée par chaque axe principal. Les valeurs propres sont grandes pour les premiers axes et petits pour les axes suivants. Autrement dit, les premiers axes correspondent aux directions portant la quantité maximale de variation contenue dans le jeu de données.
+
+Nous examinons les valeurs propres pour déterminer le nombre de composantes principales à prendre en considération en fonction de la regle de kaiser et de coude
+
+
+Nous visualisons le tableau seulement pour les lignes dont les valeurs propres sont supperieur a 1
+```{r}
+dt=as.data.frame(res.pca$eig)
+dt[dt$eigenvalue >= 1, ]
+```
+
+
+La règle de Kaiser repose sur une idée simple. Dans une ACP normée, la somme des valeurs propres étant égale au nombre de variables, leur moyenne vaut 1. Nous considérons par conséquent qu’un axe est intéressant si sa valeur propre est supérieure 1
+Nous avons ici 79 valeurs propres superieur a 1, ce qui rend l'interpretation beaucoup plus compliquer.
+
+
+```{r}
+fviz_eig(res.pca, addlabels = TRUE)
+```
+
+En règle générale, le coude est très marqué lorsque nous traitons des variables fortement corrélées. Lorsqu’elles le sont faiblement ou lorsqu’il y a des blocs de variables corrélées, plutôt qu’une solution unique « évidente », nous devons faire face à plusieurs scénarios
+
+
+
+## Distribution de l’inertie
+L’inertie des axes factoriels indique d’une part si les variables sont structurées et suggère d’autre part le nombre judicieux de composantes principales à étudier.
+
+Les 2 premiers axes de l’ analyse expriment 24.72% de l’inertie totale du jeu de données ; cela signifie que 24.72% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan. C’est un pourcentage relativement faible, et le premier plan représente donc seulement une part de la variabilité contenue dans l’ensemble du jeu de données actif.
+
+Du fait de ces observations, il serait alors probablement nécessaire de considérer également les dimensions supérieures ou égales à la troisième dans l’analyse.
+
+
+## Cercle de corrélation
+La corrélation entre une variable et une composante principale est utilisée comme coordonnées de la variable sur la composante principale. 
+
+
+
+```{r include=TRUE}
+
+fviz_pca_var(res.pca, select.var = list(cos2 = 0.5))
+```
+
+
+
+En prenant les variables dont les contibutions sont superieur  a 0.5 sur l'une des deux axes, on obtient le cercle de correlation ci-dessus.
+Si nous devons retenir toutes les 23 axes, et faire la meme representation, il nous sera tres difficile de l'interpreter.
+
+Cependant on peut voir que les variables sont tres bien correle a l'axe 1
+
+Pour ce faire nous allons faire une classifiaction avec la ''methode de ward'' et ''methode K-Mean'' sur les coordonnées des individus pour les rasembler en different classe.
+
+
+## Classification par la methode K-Mean
+
+### Deux principaux axes
+Dans cette partie nous utilisons les deux principaux axe pour la classification des individus, sachant que les 2 premiers axes de l’ analyse expriment 24.72% de l’inertie totale du jeu de données ; cela signifie que 24.72% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ce plan
+
+### Determimination du nombre de Clusters optimaux
+```{r}
+## K-Mean
+
+res.pca <- PCA(data,ncp=2, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca$ind$coord
+df <- scale(ncp) # Scaling the data
+
+
+```
+
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df, kmeans,iter.max = 50, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+Lorsque nous prenons les deux axes principaux, on se retrouve avec 3 clusters optimaux. Cependand on peut bien voir que en prenant 10 cluster on s'eloigne pas de la performance que apportent les 6 cluster
+
+
+```{r}
+km.res <- kmeans(df, 3,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = data,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+
+Dans la figure précedente, nous avons representés nos individus en 3 classe, vu le nombre de classe optimal.
+
+```{r}
+km.res <- kmeans(df, 10,iter.max = 10000, nstart = 500)
+
+fviz_cluster(km.res, data = data,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Nous resemblons nos individus sous 10 cluster, ceci est satisfessant dans car nous avons 10 classe de chiffre dans notre ensemble de données
+
+
+### 79 principaux axes
+
+Dans cette partie nous utilisons les 79 principaux axe pour la classification des individus, sachant que les 79 premiers axes de l’ analyse expriment 88.67% de l’inertie totale du jeu de données ; cela signifie que 88.67% de la variabilité totale du nuage des individus (ou des variables) est représentée dans ces plans
+
+### Determimination du nombre optimal de cluster
+
+```{r}
+## K-Mean
+
+res.pca <- PCA(data,ncp=79, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca$ind$coord
+df23 <- scale(ncp) # Scaling the data
+
+
+```
+
+```{r}
+
+
+# Silhouette method
+fviz_nbclust(df23, kmeans,iter.max = 50,nstart = 100, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+
+En Prenant les 79 axes principaux, on obtient 8 clusters optimaux
+```{r}
+km.res <- kmeans(df23, 8,iter.max = 10000, nstart = 50)
+
+fviz_cluster(km.res, data = data,
+             #palette = c("#2E9FDF", "#00AFBB", "#E7B800"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+)
+```
+Cette representation est difficile a interpreter, car nous avons 23 axes principal. Meme si elle donne plus d'informations.
+
+## Classiffication avec l'algorithme de Ward.
+Nous utilison Dans cette partie Une ACP suivi de la classification hiérachique sur le jeu de donnée res.PCA
+
+```{r}
+res.PCA= PCA(data,ncp=79, graph = FALSE,scale.unit = TRUE) # ACP en conservant 23 dimentions
+hc=HCPC(res.PCA,kk=100,description = F,graph = F) # Classification avec prétraitement par Kmean avec kk=100 classe
+plot(hc,choice='tree') # Graphe de l'abre
+plot(hc,choice='map',draw.tree=F) # Plan de l'ACP avec les abres
+plot(hc,choice='3D.map') # Plan de l'ACP avec les abres
+
+#catdes(hc$data.clust,ncol((hc$data.clust)))  ## caracterisation des classes
+
+```
+
+
+
+## Classiffication avec l'algorithme de Ward.
+
+Nous utilisons les 79 axes principales, car ayant tous des valeurs propres superieur a 1.
+```{r}
+res.pca <- PCA(data,ncp=79, graph = FALSE,scale.unit = TRUE)
+ncp=res.pca$ind$coord
+```
+
+Dans cette partie nous utilisons les cordonnées des individu de l'ACP pour faire la classification avec l'algorithne de ward
+```{r}
+## standarisation des donnees
+new_data_scaled <- ncp              
+new_data_scaled.dist <- dist(new_data_scaled)     # Calcul de distance
+new_data_scaled.distT <- dist(t(new_data_scaled)) # calcul de distance
+```
+
+
+
+
+```{r}
+# effectuer un regroupement hiérarchique des observations (variables) en utilisant la méthode de Ward 
+ward = hclust(new_data_scaled.distT,method='ward.D2')
+wardT = hclust(new_data_scaled.dist,method='ward.D2')
+```
+
+
+
+```{r}
+plot(wardT, main = 'Wards Method',xlab =" ", sub ="")
+rect.hclust(wardT, k =10, border = 'red') ## selecting three clusters
+
+```
+Ce cluster nous permet de voir 10 classe.
+
+## Conclusion pour la donnée entiere
+
+Dans cette partie de notre étude nous avons pu momtrer que nos 2000 ligne pouvais etre regrouper en 10 classe a partir des methode de l'ACP en reduissant la dimension a un nombre acceptable pour ensuite faire de la Classification.
+Le KMean donne 3 cluster optimal pour les deux priemiers axe principaux et 8 cluster pour les 79 axes principaux. Donc plus on augmente le nombre de composantes principal, plus on obtient un resultat plus precis.
+
+# Conclusion
+
+Pour les données total le nombre de cluster est de 8 avec la methode de KMean. 10 classes ont été egalement obtenue par la méthode de
+De graphe hiéarichique.
+De facon génerale, le nombre le nomnbre de cluster n'est pas si differents pour les 6 dataset.
+Cependant la reduction des dimentions par l'ACP a permis de classifier en groupe d'individu et de trouver des resultats pertinentes.
